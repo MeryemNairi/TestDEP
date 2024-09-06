@@ -86,16 +86,23 @@ def analyze_conversation(text):
     return participants, topics, most_active, most_positive, most_negative
 
 def handle_userinput(user_question):
-    response = st.session_state.conversation.invoke({'question': user_question})
-    st.session_state.chat_history = response['chat_history']
+    if st.session_state.conversation is None:
+        st.error("Conversation chain is not initialized. Please process PDF documents first.")
+        return
 
-    for i, message in enumerate(st.session_state.chat_history):
-        if i % 2 == 0:
-            st.write(user_template.replace("{{MSG}}", message.content), unsafe_allow_html=True)
-            save_message_to_db(user_message=message.content, bot_response="")
-        else:
-            st.write(bot_template.replace("{{MSG}}", message.content), unsafe_allow_html=True)
-            update_message_in_db(bot_response=message.content)
+    try:
+        response = st.session_state.conversation.invoke({'question': user_question})
+        st.session_state.chat_history = response['chat_history']
+
+        for i, message in enumerate(st.session_state.chat_history):
+            if i % 2 == 0:
+                st.write(user_template.replace("{{MSG}}", message.content), unsafe_allow_html=True)
+                save_message_to_db(user_message=message.content, bot_response="")
+            else:
+                st.write(bot_template.replace("{{MSG}}", message.content), unsafe_allow_html=True)
+                update_message_in_db(bot_response=message.content)
+    except Exception as e:
+        st.error(f"An error occurred while processing the user input: {e}")
 
 def get_db_connection():
     conn = psycopg2.connect(
